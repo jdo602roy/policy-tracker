@@ -31,6 +31,6 @@ export default async function handler(req, res) {
     }
   } catch (error) {
     console.error("Error fetching representatives:", error.message);
-    res.status(500).json({ error: "Could not connect to Geocodio service." });
+    res.status(500).json({ error: "An error occurred." });
   }
 }
