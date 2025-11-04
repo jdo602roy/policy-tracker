@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Policy Tracker</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; display: flex; }
+        h1, h2 { color: #333; }
+        #main-content { flex: 3; padding-right: 20px; }
+        #sidebar { flex: 1; border-left: 1px solid #ddd; padding-left: 20px; }
+        .bill-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            background-color: #f9f9f9;
+        }
+        .bill-card h3 { margin-top: 0; }
+        .bill-card p { margin-bottom: 0; }
+        .tags { font-style: italic; color: #555; }
+        #zip-form { display: flex; }
+        #zip-input { flex: 1; }
+        #rep-info { margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <main id="main-content">
+        <h1>Recently Passed Bills</h1>
+        <div id="bills-container">
+            <p>Loading bills...</p>
+        </div>
+    </main>
+
+    <aside id="sidebar">
+        <h2>Your Profile</h2>
+        
+        <div>
+            <label for="zip-input">Your Zip Code:</label>
+            <form id="zip-form">
+                <input type="text" id="zip-input" placeholder="e.g., 90210">
+                <button type="submit">Find</button>
+            </form>
+            <div id="rep-info">
+                </div>
+        </div>
+
+        <hr style="margin: 20px 0;">
+
+        <p>Select your interests:</p>
+        <div id="interests-form">
+            <div><input type="checkbox" id="Finance" class="interest-check"> <label for="Finance">Finance</label></div>
+            <div><input type="checkbox" id="Health" class="interest-check"> <label for="Health">Health</label></div>
+            <div><input type="checkbox" id="Education" class="interest-check"> <label for="Education">Education</label></div>
+            <div><input type="checkbox" id="Technology" class="interest-check"> <label for="Technology">Technology</label></div>
+            <div><input type="checkbox" id="National Security" class="interest-check"> <label for="National Security">National Security</label></div>
+        </div>
+    </aside>
+
+    <script>
+        // --- YOUR GEOCODIO API KEY ---
+        // Remember to use your NEW, secure key
+        const GEOCODIO_API_KEY = "YOUR_KEY_WILL_GO_HERE";
+        
+        const billsContainer = document.getElementById('bills-container');
+        const interestsForm = document.getElementById('interests-form');
+        const zipForm = document.getElementById('zip-form');
+        const zipInput = document.getElementById('zip-input');
+        const repInfoContainer = document.getElementById('rep-info');
+
+        let allBills = []; 
+        let userInterests = []; 
+
+        async function initializePage() {
+            loadInterests();
+            loadZipCode(); 
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/bills');
+                allBills = await response.json();
+                renderBills();
+            } catch (error) {
+                console.error('Failed to load bills:', error);
+                billsContainer.innerHTML = '<p>Error loading bills. Is the server running?</p>';
+            }
+        }
+
+        // --- ZIP CODE FUNCTIONS (UPDATED) ---
+        
+        function loadZipCode() {
+            const savedZip = localStorage.getItem('userZip') || '';
+            if (savedZip) {
+                zipInput.value = savedZip;
+                fetchRepresentatives(savedZip);
+            }
+        }
+
+        async function handleZipSubmit(event) {
+            event.preventDefault(); 
+            const zip = zipInput.value;
+            if (zip.length < 5) {
+                repInfoContainer.innerHTML = "<p>Please enter a 5-digit zip code.</p>";
+                return;
+            }
+            
+            localStorage.setItem('userZip', zip); 
+            await fetchRepresentatives(zip);
+        }
+        
+        // THIS FUNCTION CONTAINS THE FIX
+        async function fetchRepresentatives(zip) {
+            repInfoContainer.innerHTML = "<p>Loading your reps...</p>";
+            
+            const url = `https://api.geocod.io/v1.7/geocode?q=${zip}&fields=cd&api_key=${GEOCODIO_API_KEY}`;
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error("Could not find data for that zip code.");
+                }
+                const data = await response.json();
+                
+                if (!data.results || data.results.length === 0) {
+                     throw new Error("No results found for that zip code.");
+                }
+
+                const result = data.results[0];
+                const districts = result.fields.congressional_districts;
+                
+                repInfoContainer.innerHTML = "<h3>Your Federal Representatives:</h3>";
+                
+                districts.forEach(district => {
+                    district.current_legislators.forEach(person => {
+                        
+                        // --- START OF FIX ---
+                        // The data is nested inside the 'bio' object
+                        const fullName = `${person.bio.first_name} ${person.bio.last_name}`;
+                        const party = person.bio.party;
+                        const type = person.type === 'senator' ? 'Senator' : 'Representative';
+                        // --- END OF FIX ---
+
+                        repInfoContainer.innerHTML += `
+                            <p>
+                                <strong>${fullName}</strong> (${party})<br>
+                                <small>${type}</small>
+                            </p>
+                        `;
+                    });
+                });
+
+            } catch (error) {
+                console.error("Error fetching reps:", error);
+                repInfoContainer.innerHTML = `<p style="color: red;">${error.message}</p>`;
+            }
+        }
+
+        // --- INTEREST FUNCTIONS (Same as before) ---
+        function loadInterests() {
+            const savedInterests = JSON.parse(localStorage.getItem('userInterests')) || [];
+            userInterests = savedInterests;
+            document.querySelectorAll('.interest-check').forEach(checkbox => {
+                if (userInterests.includes(checkbox.id)) {
+                    checkbox.checked = true;
+                }
+            });
+        }
+        function saveInterests() {
+            userInterests = [];
+            document.querySelectorAll('.interest-check:checked').forEach(checkbox => {
+                userInterests.push(checkbox.id);
+            });
+            localStorage.setItem('userInterests', JSON.stringify(userInterests));
+            renderBills();
+        }
+
+        // --- BILL DISPLAY FUNCTION (Same as before) ---
+        function renderBills() {
+            billsContainer.innerHTML = ''; 
+            const filteredBills = allBills.filter(bill => {
+                if (userInterests.length === 0) return true;
+                return bill.tags && bill.tags.some(tag => userInterests.includes(tag));
+            });
+            
+            if (filteredBills.length === 0) {
+                billsContainer.innerHTML = '<p>No bills match your selected interests.</p>';
+                return;
+            }
+
+            filteredBills.forEach(bill => {
+                const billCard = document.createElement('div');
+                billCard.className = 'bill-card';
+                billCard.innerHTML = `
+                    <h3><a href="./detail.html?id=${bill._id}">${bill.title} (H.R. ${bill.number})</a></h3>
+                    <p><strong>Latest Status:</strong> ${bill.summary}</p>
+                    <p class="tags">Tags: ${bill.tags ? bill.tags.join(', ') : 'None'}</p>
+                `;
+                billsContainer.appendChild(billCard);
+            });
+        }
+
+        // --- EVENT LISTENERS ---
+        interestsForm.addEventListener('change', saveInterests);
+        zipForm.addEventListener('submit', handleZipSubmit); 
+        
+        initializePage();
+    </script>
+</body>
+</html>
