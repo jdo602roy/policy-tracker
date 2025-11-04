@@ -39,7 +39,7 @@
                     throw new Error("No bill ID found in URL.");
                 }
 
-                const response = await fetch(`http://localhost:3000/api/bill/${billId}`);
+                const response = await fetch(/api/bill/${billId});
                 const bill = await response.json();
 
                 // --- START OF FIX ---
