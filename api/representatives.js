@@ -3,17 +3,17 @@ const axios = require('axios');
 const GEOCODIO_API_KEY = process.env.GEOCODIO_API_KEY;
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const zip = req.query.zip;
-
-  if (!zip) {
-    return res.status(400).json({ error: "Zip code required" });
-  }
-
   try {
+    if (req.method !== 'GET') {
+      return res.status(405).json({ error: "Method not allowed" });
+    }
+
+    const zip = req.query.zip;
+
+    if (!zip) {
+      return res.status(400).json({ error: "Zip code required" });
+    }
+
     const url = `https://api.geocod.io/v1.7/geocode?q=${zip}&fields=cd&api_key=${GEOCODIO_API_KEY}`;
     const response = await axios.get(url);
     
@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       res.status(404).json({ message: "No representatives found for that zip code." });
     }
   } catch (error) {
-    console.error("Error fetching representatives:", error.message);
-    res.status(500).json({ error: "An error occurred." });
+    console.error("Server error:", error.message);
+    res.status(500).json({ error: "An internal server error occurred. Please try again later." });
   }
 }

@@ -29,74 +29,77 @@
     <a href="./index.html">&larr; Back to all bills</a>
 
     <script>
-        async function loadBillDetail() {
-            const container = document.getElementById('bill-container');
-            try {
-                const urlParams = new URLSearchParams(window.location.search);
-                const billId = urlParams.get('id');
+async function loadBillDetail() {
+const container = document.getElementById('bill-container');
+try {
+const urlParams = new URLSearchParams(window.location.search);
+const billId = urlParams.get('id');
 
-                if (!billId) {
-                    throw new Error("No bill ID found in URL.");
-                }
+if (!billId) {
+throw new Error("No bill ID found in URL.");
+}
 
-                const response = await fetch(`/api/bill/${billId}`);
-                const bill = await response.json();
+const response = await fetch(`/api/bill/${billId}`);
+if (!response.ok) {
+throw new Error(`Server error: ${response.status} - ${response.statusText}`);
+}
+const bill = await response.json();
 
-                // --- START OF FIX ---
+// --- START OF FIX ---
 
-                // This object maps the API's bill type to the URL's slug
-                const billTypeMapping = {
-                    'HR': 'house-bill',
-                    'S': 'senate-bill',
-                    'HRES': 'house-resolution',
-                    'SRES': 'senate-resolution',
-                    'HCONRES': 'house-concurrent-resolution',
-                    'SCONRES': 'senate-concurrent-resolution',
-                    'HJRES': 'house-joint-resolution',
-                    'SJRES': 'senate-joint-resolution'
-                };
-                
-                // Look up the correct slug (e.g., 'HR' becomes 'house-bill')
-                const billTypeSlug = billTypeMapping[bill.type];
-                
-                let fullTextUrl = '#'; // Default to a blank link if type is unknown
-                if (billTypeSlug) {
-                    fullTextUrl = `https://www.congress.gov/bill/${bill.congress}th-congress/${billTypeSlug}/${bill.number}/text`;
-                }
+// This object maps the API's bill type to the URL's slug
+const billTypeMapping = {
+'HR': 'house-bill',
+'S': 'senate-bill',
+'HRES': 'house-resolution',
+'SRES': 'senate-resolution',
+'HCONRES': 'house-concurrent-resolution',
+'SCONRES': 'senate-concurrent-resolution',
+'HJRES': 'house-joint-resolution',
+'SJRES': 'senate-joint-resolution'
+};
 
-                // --- END OF FIX ---
-                
-                const easySummary = bill.easySummary || '<p class="placeholder">No simple summary is available for this bill yet.</p>';
-                const effectiveness = bill.effectivenessAnalysis || '<p class="placeholder">No effectiveness analysis is available for this bill yet.</p>';
+// Look up the correct slug (e.g., 'HR' becomes 'house-bill')
+const billTypeSlug = billTypeMapping[bill.type];
 
-                container.innerHTML = `
-                    <h1>${bill.title}</h1>
-                    
-                    <div class="bill-header">
-                        <p><strong>Bill:</strong> ${bill.type} ${bill.number} (Congress ${bill.congress})</p>
-                        <p><strong>Latest Status:</strong> ${bill.summary}</p>
-                        <p><strong>Full Text:</strong> <a href="${fullTextUrl}" target="_blank">Read on Congress.gov</a></p>
-                    </div>
+let fullTextUrl = '#'; // Default to a blank link if type is unknown
+if (billTypeSlug) {
+fullTextUrl = `https://www.congress.gov/bill/${bill.congress}th-congress/${billTypeSlug}/${bill.number}/text`;
+}
 
-                    <div class="analysis-section">
-                        <h2>Simple Summary</h2>
-                        ${easySummary}
-                    </div>
-                    
-                    <div class="analysis-section">
-                        <h2>Effectiveness Analysis</h2>
-                        ${effectiveness}
-                    </div>
-                `;
+// --- END OF FIX ---
 
-            } catch (error) {
-                console.error("Failed to load bill:", error);
-                container.innerHTML = '<h1>Error: Bill not found.</h1>';
-            }
-        }
-        
-        loadBillDetail();
-    </script>
+const easySummary = bill.easySummary || '<p class="placeholder">No simple summary is available for this bill yet.</p>';
+const effectiveness = bill.effectivenessAnalysis || '<p class="placeholder">No effectiveness analysis is available for this bill yet.</p>';
+
+container.innerHTML = `
+<h1>${bill.title}</h1>
+
+<div class="bill-header">
+<p><strong>Bill:</strong> ${bill.type} ${bill.number} (Congress ${bill.congress})</p>
+<p><strong>Latest Status:</strong> ${bill.summary}</p>
+<p><strong>Full Text:</strong> <a href="${fullTextUrl}" target="_blank">Read on Congress.gov</a></p>
+</div>
+
+<div class="analysis-section">
+<h2>Simple Summary</h2>
+${easySummary}
+</div>
+
+<div class="analysis-section">
+<h2>Effectiveness Analysis</h2>
+${effectiveness}
+</div>
+`;
+
+} catch (error) {
+console.error("Failed to load bill:", error);
+container.innerHTML = '<h1>Error: ' + error.message + '</h1>';
+}
+}
+
+loadBillDetail();
+</script>
 
 </body>
 </html>

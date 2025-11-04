@@ -75,11 +75,12 @@
             
             try {
                 const response = await fetch('/api/bills');
+                if (!response.ok) throw new Error('Server error ' + response.status);
                 allBills = await response.json();
                 renderBills();
-            } catch (error) {
+                } catch (error) {
                 console.error('Failed to load bills:', error);
-                billsContainer.innerHTML = '<p>Error loading bills. Is the server running?</p>';
+                billsContainer.innerHTML = '<p>Error loading bills: ' + error.message + '</p>';
             }
         }
 
