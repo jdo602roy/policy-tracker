@@ -3,9 +3,15 @@ const express = require('express');
 const cors = require('cors');
 
 // --- Your Settings ---
-const MONGO_URI = 'YOUR_KEY_WILL_GO_HERE'; // Your connection string
+const MONGO_URI = process.env.MONGO_URI; 
 const DB_NAME = 'policyTracker';
-const PORT = 3000; 
+const PORT = process.env.PORT || 3000; 
+// ----------------------------------------------------------------------------------
+// NOTE: Vercel does not pass GOOGLE_AI_KEY or CONGRESS_API_KEY to the server.js file. 
+// However, the new /api/representatives endpoint now needs the GEOCODIO_API_KEY.
+// We'll rely on the server.js file reading process.env.GEOCODIO_API_KEY
+// in the /api/representatives endpoint (from the code I sent before).
+// ----------------------------------------------------------------------------------
 
 const app = express();
 app.use(cors());
