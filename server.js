@@ -40,28 +40,41 @@ app.get('/api/bills', async (req, res) => {
     res.status(500).json({ error: "An error occurred." });
   }
 });
+// --- NEW ENDPOINT: GET REPRESENTATIVES (SECURELY) ---
+// This endpoint securely fetches data from Geocodio
+app.get('/api/representatives', async (req, res) => {
+    try {
+        // The zip code is passed as a query parameter from the front-end: /api/representatives?zip=90210
+        const zip = req.query.zip;
+        
+        // --- NOTE: We use process.env to access the secret key stored in Vercel ---
+        const GEOCODIO_API_KEY = process.env.GEOCODIO_API_KEY;
 
-// === THIS IS THE NEW ENDPOINT YOU ADDED ===
-// It gets ONE bill by its ID for the detail page
-app.get('/api/bill/:id', async (req, res) => {
-  try {
-    const billId = req.params.id;
-    const billsCollection = db.collection('bills');
-    const bill = await billsCollection.findOne({ _id: new ObjectId(billId) });
+        const url = `https://api.geocod.io/v1.7/geocode?q=${zip}&fields=cd&api_key=${GEOCODIO_API_KEY}`;
+        
+        const response = await axios.get(url);
+        
+        if (response.data.results && response.data.results.length > 0) {
+            const result = response.data.results[0];
+            
+            // We only send back the representative data, not the whole response
+            const repData = result.fields.congressional_districts.flatMap(d => d.current_legislators.map(p => ({
+                name: `${p.bio.first_name} ${p.bio.last_name}`,
+                party: p.bio.party,
+                title: p.type === 'senator' ? 'Senator' : 'Representative'
+            })));
+            
+            res.json(repData);
+        } else {
+            res.status(404).json({ message: "No representatives found for that zip code." });
+        }
 
-    if (!bill) {
-      res.status(404).json({ error: "Bill not found" });
-      return;
+    } catch (error) {
+        console.error("Error fetching representatives:", error.message);
+        res.status(500).json({ error: "Could not connect to Geocodio service." });
     }
-    
-    res.json(bill); 
-    
-  } catch (error) {
-    console.error("Error fetching single bill:", error);
-    res.status(500).json({ error: "An error occurred." });
-  }
 });
-
+// ----------------------------------------------------
 
 // --- Start the Server ---
 async function startServer() {

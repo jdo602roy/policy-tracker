@@ -59,9 +59,6 @@
     </aside>
 
     <script>
-        // --- YOUR GEOCODIO API KEY ---
-        // Remember to use your NEW, secure key
-        const GEOCODIO_API_KEY = "YOUR_KEY_WILL_GO_HERE";
         
         const billsContainer = document.getElementById('bills-container');
         const interestsForm = document.getElementById('interests-form');
@@ -110,50 +107,37 @@
         
         // THIS FUNCTION CONTAINS THE FIX
         async function fetchRepresentatives(zip) {
-            repInfoContainer.innerHTML = "<p>Loading your reps...</p>";
-            
-            const url = `https://api.geocod.io/v1.7/geocode?q=${zip}&fields=cd&api_key=${GEOCODIO_API_KEY}`;
-            
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error("Could not find data for that zip code.");
-                }
-                const data = await response.json();
-                
-                if (!data.results || data.results.length === 0) {
-                     throw new Error("No results found for that zip code.");
-                }
-
-                const result = data.results[0];
-                const districts = result.fields.congressional_districts;
-                
-                repInfoContainer.innerHTML = "<h3>Your Federal Representatives:</h3>";
-                
-                districts.forEach(district => {
-                    district.current_legislators.forEach(person => {
-                        
-                        // --- START OF FIX ---
-                        // The data is nested inside the 'bio' object
-                        const fullName = `${person.bio.first_name} ${person.bio.last_name}`;
-                        const party = person.bio.party;
-                        const type = person.type === 'senator' ? 'Senator' : 'Representative';
-                        // --- END OF FIX ---
-
-                        repInfoContainer.innerHTML += `
-                            <p>
-                                <strong>${fullName}</strong> (${party})<br>
-                                <small>${type}</small>
-                            </p>
-                        `;
-                    });
-                });
-
-            } catch (error) {
-                console.error("Error fetching reps:", error);
-                repInfoContainer.innerHTML = `<p style="color: red;">${error.message}</p>`;
-            }
+    repInfoContainer.innerHTML = "<p>Loading your reps securely...</p>";
+    
+    // CALLS YOUR SERVER: http://[your-site].vercel.app/api/representatives?zip=...
+    const url = `/api/representatives?zip=${zip}`; 
+    
+    try {
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Failed to find location.");
         }
+        
+        const repData = await response.json(); // This is the cleaned array of reps
+        
+        repInfoContainer.innerHTML = "<h3>Your Federal Representatives:</h3>";
+        
+        repData.forEach(person => {
+            repInfoContainer.innerHTML += `
+                <p>
+                    <strong>${person.name}</strong> (${person.party})<br>
+                    <small>${person.title}</small>
+                </p>
+            `;
+        });
+
+        } catch (error) {
+        console.error("Error fetching reps:", error);
+        repInfoContainer.innerHTML = `<p style="color: red;">${error.message}</p>`;
+        }
+    }
 
         // --- INTEREST FUNCTIONS (Same as before) ---
         function loadInterests() {
